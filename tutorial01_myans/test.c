@@ -1,0 +1,89 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "leptjson.h"
+// #include <assert.h>
+
+static int main_ret = 0;
+static int test_count = 0;
+static int test_pass = 0;
+
+#define EXPECT_EQ_BASE(equality, expect, actual, format) \
+    do {\
+        test_count++;\
+        if (equality)\
+            test_pass++;\
+        else {\
+            fprintf(stderr, "%s:%d: expect: " format " actual: " format "\n", __FILE__, __LINE__, expect, actual);\
+            main_ret = 1;\
+        }\
+    } while(0)
+
+#define EXPECT_EQ_INT(expect, actual) EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%d")
+
+static void test_parse_null() {
+    lept_value v;
+    v.type = LEPT_FALSE; //指定要测试的类型是false
+    EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "null"));
+    // printf("%d\n",v.type);
+    EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));//指定的JSON节点类型是false，显然不是null，所以不通过
+}
+
+static void test_parse_true() {
+    lept_value v;
+    v.type = LEPT_TRUE;
+    EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "true"));
+    EXPECT_EQ_INT(LEPT_TRUE, lept_get_type(&v));
+}
+
+static void test_parse_false() {
+    lept_value v;
+    v.type = LEPT_FALSE;
+    EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "false"));
+    EXPECT_EQ_INT(LEPT_FALSE, lept_get_type(&v));
+}
+
+static void test_parse_expect_value() {
+    lept_value v;
+
+    v.type = LEPT_FALSE;
+    EXPECT_EQ_INT(LEPT_PARSE_EXPECT_VALUE, lept_parse(&v, ""));
+    EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));
+
+    v.type = LEPT_FALSE;
+    EXPECT_EQ_INT(LEPT_PARSE_EXPECT_VALUE, lept_parse(&v, " "));
+    EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));
+}
+
+static void test_parse_invalid_value() {
+    lept_value v;
+    v.type = LEPT_FALSE;
+    EXPECT_EQ_INT(LEPT_PARSE_INVALID_VALUE, lept_parse(&v, "nul"));
+    EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));
+
+    v.type = LEPT_FALSE;
+    EXPECT_EQ_INT(LEPT_PARSE_INVALID_VALUE, lept_parse(&v, "?"));
+    EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));
+}
+
+static void test_parse_root_not_singular() {
+    lept_value v;
+    v.type = LEPT_FALSE;
+    EXPECT_EQ_INT(LEPT_PARSE_ROOT_NOT_SINGULAR, lept_parse(&v, "null x"));
+    EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));
+}
+
+static void test_parse() {
+    test_parse_null();
+    test_parse_true();
+    test_parse_false();
+    test_parse_expect_value();
+    test_parse_invalid_value();
+    test_parse_root_not_singular();
+}
+
+int main() {
+    test_parse();
+    printf("%d/%d (%3.2f%%) passed\n", test_pass, test_count, test_pass * 100.0 / test_count);
+    return main_ret;
+}
