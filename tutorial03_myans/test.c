@@ -7,16 +7,16 @@ static int main_ret = 0;
 static int test_count = 0;
 static int test_pass = 0;
 
-#define EXPECT_EQ_BASE(equality, expect, actual, format) \
-    do {\
-        test_count++;\
-        if (equality)\
-            test_pass++;\
-        else {\
-            fprintf(stderr, "%s:%d: expect: " format " actual: " format "\n", __FILE__, __LINE__, expect, actual);\
-            main_ret = 1;\
-        }\
-    } while(0)
+#define EXPECT_EQ_BASE(equality, expect, actual, format)                                                           \
+    do {                                                                                                           \
+        test_count++;                                                                                              \
+        if (equality)                                                                                              \
+            test_pass++;                                                                                           \
+        else {                                                                                                     \
+            fprintf(stderr, "%s:%d: expect: " format " actual: " format "\n", __FILE__, __LINE__, expect, actual); \
+            main_ret = 1;                                                                                          \
+        }                                                                                                          \
+    } while (0)
 
 #define EXPECT_EQ_INT(expect, actual) EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%d")
 #define EXPECT_EQ_DOUBLE(expect, actual) EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%.17g")
@@ -52,15 +52,15 @@ static void test_parse_false() {
     lept_free(&v);
 }
 
-#define TEST_NUMBER(expect, json)\
-    do {\
-        lept_value v;\
-        lept_init(&v);\
-        EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, json));\
-        EXPECT_EQ_INT(LEPT_NUMBER, lept_get_type(&v));\
-        EXPECT_EQ_DOUBLE(expect, lept_get_number(&v));\
-        lept_free(&v);\
-    } while(0)
+#define TEST_NUMBER(expect, json)                           \
+    do {                                                    \
+        lept_value v;                                       \
+        lept_init(&v);                                      \
+        EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, json)); \
+        EXPECT_EQ_INT(LEPT_NUMBER, lept_get_type(&v));      \
+        EXPECT_EQ_DOUBLE(expect, lept_get_number(&v));      \
+        lept_free(&v);                                      \
+    } while (0)
 
 static void test_parse_number() {
     TEST_NUMBER(0.0, "0");
@@ -83,26 +83,26 @@ static void test_parse_number() {
     TEST_NUMBER(1.234E-10, "1.234E-10");
     TEST_NUMBER(0.0, "1e-10000"); /* must underflow */
 
-    TEST_NUMBER(1.0000000000000002, "1.0000000000000002"); /* the smallest number > 1 */
-    TEST_NUMBER( 4.9406564584124654e-324, "4.9406564584124654e-324"); /* minimum denormal */
+    TEST_NUMBER(1.0000000000000002, "1.0000000000000002");           /* the smallest number > 1 */
+    TEST_NUMBER(4.9406564584124654e-324, "4.9406564584124654e-324"); /* minimum denormal */
     TEST_NUMBER(-4.9406564584124654e-324, "-4.9406564584124654e-324");
-    TEST_NUMBER( 2.2250738585072009e-308, "2.2250738585072009e-308");  /* Max subnormal double */
+    TEST_NUMBER(2.2250738585072009e-308, "2.2250738585072009e-308"); /* Max subnormal double */
     TEST_NUMBER(-2.2250738585072009e-308, "-2.2250738585072009e-308");
-    TEST_NUMBER( 2.2250738585072014e-308, "2.2250738585072014e-308");  /* Min normal positive double */
+    TEST_NUMBER(2.2250738585072014e-308, "2.2250738585072014e-308"); /* Min normal positive double */
     TEST_NUMBER(-2.2250738585072014e-308, "-2.2250738585072014e-308");
-    TEST_NUMBER( 1.7976931348623157e+308, "1.7976931348623157e+308");  /* Max double */
+    TEST_NUMBER(1.7976931348623157e+308, "1.7976931348623157e+308"); /* Max double */
     TEST_NUMBER(-1.7976931348623157e+308, "-1.7976931348623157e+308");
 }
 
-#define TEST_STRING(expect, json)\
-    do {\
-        lept_value v;\
-        lept_init(&v);\
-        EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, json));\
-        EXPECT_EQ_INT(LEPT_STRING, lept_get_type(&v));\
-        EXPECT_EQ_STRING(expect, lept_get_string(&v), lept_get_string_length(&v));\
-        lept_free(&v);\
-    } while(0)
+#define TEST_STRING(expect, json)                                                  \
+    do {                                                                           \
+        lept_value v;                                                              \
+        lept_init(&v);                                                             \
+        EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, json));                        \
+        EXPECT_EQ_INT(LEPT_STRING, lept_get_type(&v));                             \
+        EXPECT_EQ_STRING(expect, lept_get_string(&v), lept_get_string_length(&v)); \
+        lept_free(&v);                                                             \
+    } while (0)
 
 static void test_parse_string() {
     TEST_STRING("", "\"\"");
@@ -113,15 +113,15 @@ static void test_parse_string() {
 #endif
 }
 
-#define TEST_ERROR(error, json)\
-    do {\
-        lept_value v;\
-        lept_init(&v);\
-        v.type = LEPT_FALSE;\
-        EXPECT_EQ_INT(error, lept_parse(&v, json));\
-        EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));\
-        lept_free(&v);\
-    } while(0)
+#define TEST_ERROR(error, json)                      \
+    do {                                             \
+        lept_value v;                                \
+        lept_init(&v);                               \
+        v.type = LEPT_FALSE;                         \
+        EXPECT_EQ_INT(error, lept_parse(&v, json));  \
+        EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v)); \
+        lept_free(&v);                               \
+    } while (0)
 
 static void test_parse_expect_value() {
     TEST_ERROR(LEPT_PARSE_EXPECT_VALUE, "");
@@ -182,7 +182,7 @@ static void test_access_null() {
     lept_value v;
     lept_init(&v);
     lept_set_string(&v, "a", 1);  // 故意先把值设为字符串，那么做可以测试设置其他类型时，有没有调用 lept_free() 去释放内存
-    lept_set_null(&v);//null的setter直接使用宏调用了字符串free的内容
+    lept_set_null(&v);            // null的setter直接使用宏调用了字符串free的内容
     EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));
     lept_free(&v);
 }
@@ -200,7 +200,7 @@ static void test_access_boolean() {
 
 static void test_access_number() {
     lept_value v;
-    lept_init(&v);
+    // lept_init(&v);
     lept_set_string(&v, "a", 1);
     lept_set_number(&v, 12.05);
     EXPECT_EQ_DOUBLE(12.05, lept_get_number(&v));

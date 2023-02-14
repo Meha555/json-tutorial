@@ -27,23 +27,23 @@ typedef struct {
     size_t size, top;
 } lept_context;
 
-//压入字符串到缓冲区，同时自动为缓冲区扩容，返回新栈顶的指针
+// 压入字符串到缓冲区，同时自动为缓冲区扩容，返回新栈顶的指针
 static void* lept_context_push(lept_context* c, size_t size) {
     void* ret;
     assert(size > 0);
-    if (c->top + size >= c->size) {//如果确实空间不够，需要扩容
-        if (c->size == 0)//对于初始的NULL字符串的情况予以特判
-            c->size = LEPT_PARSE_STACK_INIT_SIZE;//分配默认的最初缓冲区大小
-        while (c->top + size >= c->size)//用循环确定缓冲区扩容后的大小，直到能装下为止
-            c->size += c->size >> 1; /* c->size * 1.5 */
-        c->stack = (char*)realloc(c->stack, c->size);//扩容
+    if (c->top + size >= c->size) {                    // 如果确实空间不够，需要扩容
+        if (c->size == 0)                              // 对于初始的NULL字符串的情况予以特判
+            c->size = LEPT_PARSE_STACK_INIT_SIZE;      // 分配默认的最初缓冲区大小
+        while (c->top + size >= c->size)               // 用循环确定缓冲区扩容后的大小，直到能装下为止
+            c->size += c->size >> 1;                   /* c->size * 1.5 */
+        c->stack = (char*)realloc(c->stack, c->size);  // 扩容
     }
-    ret = c->stack + c->top;//此时的c->stack已经是新指针了
-    c->top += size;//更新大小
+    ret = c->stack + c->top;  // 此时的c->stack已经是新指针了
+    c->top += size;           // 更新大小
     return ret;
 }
 
-//从缓冲区弹出size个字符（实际上是直接更改栈顶指针指向）
+// 从缓冲区弹出size个字符（实际上是直接更改栈顶指针指向）
 static void* lept_context_pop(lept_context* c, size_t size) {
     assert(c->top >= size);
     return c->stack + (c->top -= size);
@@ -104,25 +104,44 @@ static int lept_parse_number(lept_context* c, lept_value* v) {
     return LEPT_PARSE_OK;
 }
 
-//string的parser
+// string的parser
 static int lept_parse_string(lept_context* c, lept_value* v) {
     size_t head = c->top, len;
     const char* p;
-    EXPECT(c, '\"');//识别并去掉包裹字符串开头的 "
+    EXPECT(c, '\"');  // 识别并去掉包裹字符串开头的 "
     p = c->json;
-    for (;;) {//无限循环
+    for (;;) {  // 无限循环
         char ch = *p++;
         switch (ch) {
-            case '\"'://遇到包裹字符串末尾的 "
-                len = c->top - head;//此时可以计算字符串长度
-                lept_set_string(v, (const char*)lept_context_pop(c, len), len);//求出这个字符串
+            case '\"': // 遇到包裹字符串末尾的 "
+                len = c->top - head; // 此时可以计算字符串长度
+                lept_set_string(v, (const char*)lept_context_pop(c, len), len);  // 求出这个字符串
                 c->json = p;
                 return LEPT_PARSE_OK;
-            case '\0'://遇到空字符，说明字符串为空或缺少 "
+            case '\0':  // 遇到空字符，说明字符串为空或缺少 "
                 c->top = head;
                 return LEPT_PARSE_MISS_QUOTATION_MARK;
+            case '\\':// 遇到转义字符
+                 switch (*p++) {//读取\后的第一个字符，压入对应的转义字符
+                    case '\"': PUTC(c, '\"'); break;//"
+                    case '\\': PUTC(c, '\\'); break;//'\'
+                    case '/':  PUTC(c, '/' ); break;//'/'
+                    case 'b':  PUTC(c, '\b'); break;
+                    case 'f':  PUTC(c, '\f'); break;
+                    case 'n':  PUTC(c, '\n'); break;
+                    case 'r':  PUTC(c, '\r'); break;
+                    case 't':  PUTC(c, '\t'); break;
+                    default://除了以上的，其他的字符加在反斜线后面都是非法的
+                        c->top = head;
+                        return LEPT_PARSE_INVALID_STRING_ESCAPE;
+                }
+                break;
             default:
-                PUTC(c, ch);//压入当前字符到缓冲区
+                if((unsigned char)ch<0x20){
+                    c->top = head;
+                    return LEPT_PARSE_INVALID_STRING_CHAR;
+                }
+                PUTC(c, ch);  // 压入当前字符到缓冲区
         }
     }
 }
@@ -178,17 +197,21 @@ lept_type lept_get_type(const lept_value* v) {
 }
 
 int lept_get_boolean(const lept_value* v) {
-    assert(v != NULL&&(v->type==LEPT_TRUE||v->type==LEPT_FALSE));//必须是bool值
-    return v->type == LEPT_TRUE;//因为LEPT_TRUE和LEPT_FALSE是枚举值，其值不为01，所以要通过条件表达式转一下
+    assert(v != NULL && (v->type == LEPT_TRUE || v->type == LEPT_FALSE));  // 必须是bool值
+    return v->type == LEPT_TRUE;                                           // 因为LEPT_TRUE和LEPT_FALSE是枚举值，其值不为01，所以要通过条件表达式转一下
 }
 
 void lept_set_boolean(lept_value* v, int b) {
     // assert(v != NULL);
-    lept_free(&v);
+    lept_free(v);
+    // printf("=> v->type: %d,b= %d\n", v->type, b);
     switch (b) {
-        case 0: v->type = LEPT_FALSE;
-        case 1: v->type = LEPT_TRUE;
+        case 0: v->type = LEPT_TRUE;
+        case 1: v->type = LEPT_FALSE;
     }
+    // v->type = b ? LEPT_TRUE : LEPT_FALSE;
+    // printf("<= v->type: %d,b= %d\n", v->type,b);
+    
 }
 
 double lept_get_number(const lept_value* v) {
@@ -197,7 +220,7 @@ double lept_get_number(const lept_value* v) {
 }
 
 void lept_set_number(lept_value* v, double n) {
-    lept_free(&v);
+    lept_free(v);
     v->type = LEPT_NUMBER;
     v->u.n = n;
 }
