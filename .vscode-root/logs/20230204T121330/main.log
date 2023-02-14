@@ -1,0 +1,6 @@
+2023-02-04 12:13:30.343 [info] update#setState idle
+2023-02-04 12:13:31.947 [info] Starting extension host with pid 34963 (fork() took 14 ms).
+2023-02-04 12:14:00.352 [info] update#setState checking for updates
+2023-02-04 12:14:00.357 [info] update#setState available for download
+2023-02-04 12:14:35.907 [warning] [File Watcher (node.js)] Watcher shutdown because watched path got deleted
+2023-02-04 13:32:49.439 [info] Extension host with pid 34963 exited with code: 0, signal: null.

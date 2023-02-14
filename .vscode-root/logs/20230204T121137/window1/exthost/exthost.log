@@ -1,0 +1,25 @@
+2023-02-04 12:11:40.979 [info] Extension host with pid 34556 started
+2023-02-04 12:11:41.702 [info] ExtensionService#_doActivateExtension vscode.microsoft-authentication, startup: false, activationEvent: 'onAuthenticationRequest:microsoft'
+2023-02-04 12:11:41.703 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2023-02-04 12:11:42.030 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2023-02-04 12:11:42.030 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2023-02-04 12:11:42.487 [info] Eager extensions activated
+2023-02-04 12:11:42.506 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2023-02-04 12:11:42.506 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onStartupFinished'
+2023-02-04 12:11:42.506 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2023-02-04 12:11:42.506 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2023-02-04 12:13:11.021 [info] Extension host terminating: received terminate message from renderer
+2023-02-04 12:13:11.033 [info] Extension host with pid 34556 exiting with code 0
+2023-02-04 12:13:13.561 [info] Extension host with pid 34817 started
+2023-02-04 12:13:13.561 [info] Skipping acquiring lock for /home/betty/桌面/TEST/json-tutorial/.vscode-root/User/workspaceStorage/b1f899db24e350d787d28dc2b3afa582.
+2023-02-04 12:13:13.682 [info] ExtensionService#_doActivateExtension vscode.microsoft-authentication, startup: false, activationEvent: 'onAuthenticationRequest:microsoft'
+2023-02-04 12:13:13.683 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*'
+2023-02-04 12:13:13.747 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2023-02-04 12:13:13.775 [info] Eager extensions activated
+2023-02-04 12:13:13.801 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2023-02-04 12:13:13.801 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onStartupFinished'
+2023-02-04 12:13:13.801 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2023-02-04 12:13:13.919 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2023-02-04 12:13:14.984 [info] ExtensionService#_doActivateExtension vscode.git, startup: false, activationEvent: 'api', root cause: vscode.github
+2023-02-04 12:13:19.133 [info] Extension host terminating: received terminate message from renderer
+2023-02-04 12:13:19.143 [info] Extension host with pid 34817 exiting with code 0

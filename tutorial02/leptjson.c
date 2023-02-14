@@ -2,10 +2,11 @@
 #include <assert.h>  /* assert() */
 #include <stdlib.h>  /* NULL, strtod() */
 
+// 作用同pl0的getch，但还包含对读入的字符是否是期待的字符的断言
 #define EXPECT(c, ch)       do { assert(*c->json == (ch)); c->json++; } while(0)
 
 typedef struct {
-    const char* json;
+    const char* json;  // 通过移动char字符串中的指针p来实现逐个字符的读入
 }lept_context;
 
 static void lept_parse_whitespace(lept_context* c) {
@@ -85,6 +86,7 @@ lept_type lept_get_type(const lept_value* v) {
     return v->type;
 }
 
+// 仅当 type == LEPT_NUMBER 时，n 才表示 JSON 数字的数值
 double lept_get_number(const lept_value* v) {
     assert(v != NULL && v->type == LEPT_NUMBER);
     return v->n;

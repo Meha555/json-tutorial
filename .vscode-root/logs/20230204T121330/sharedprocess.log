@@ -1,0 +1,2 @@
+2023-02-04 12:13:33.124 [info] Starting worker process with pid 34994 (type: fileWatcher, window: 1).
+2023-02-04 12:14:35.908 [warning] [File Watcher (node.js)] Watcher shutdown because watched path got deleted
