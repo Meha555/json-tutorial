@@ -307,7 +307,11 @@ typedef struct {
 
 ### 可变数据类型
 
-之前的单元都是固定长度的数据类型（fixed length data type），而字符串类型是可变长度的数据类型（variable length data type），因此涉及到内存管理和数据结构的设计和实现。
+之前的单元都是固定长度的数据类型（fixed length data type），而字符串类型是**可变长度的数据类型（variable length data type），因此涉及到内存管理和数据结构的设计和实现**。
+
+因为在解析 JSON 字符串时，在开始时不能知道字符串的长度，而又需要进行转义，所以需要一个临时缓冲区去存储解析后的结果。我们为此实现了一个动态增长的堆栈，可以不断压入字符，最后一次性把整个字符串弹出，复制至新分配的内存之中。
+
+如果我们知道了字符串的长度，那么这个缓冲区就不必要了，我们直接开辟所需要长度的内存空间来存储这个字符串即可。
 
 ### 自动测试工具
 
@@ -414,3 +418,158 @@ $ valgrind --leak-check=full  ./leptjson_test
 它发现 `lept_free()` 中依靠了一个未初始化的值来跳转，就是 `v.type`，而错误是沿自 `test_access_boolean()`。
 
 编写单元测试时，应考虑哪些执行次序会有机会出错，例如内存相关的错误。然后我们可以利用 TDD 的步骤，先令测试失败（以内存工具检测），修正代码，再确认测试是否成功。
+
+## 第四节
+
+根据 UTF-8 编码表实现的Unicode转UTF-8存储：
+
+```c
+static void lept_encode_utf8(lept_context* c, unsigned u) {
+    if (u <= 0x7F) 
+        PUTC(c, u & 0xFF);
+    else if (u <= 0x7FF) {
+        PUTC(c, 0xC0 | ((u >> 6) & 0xFF));
+        PUTC(c, 0x80 | ( u       & 0x3F));
+    }
+    else if (u <= 0xFFFF) {
+        PUTC(c, 0xE0 | ((u >> 12) & 0xFF));
+        PUTC(c, 0x80 | ((u >>  6) & 0x3F));
+        PUTC(c, 0x80 | ( u        & 0x3F));
+    }
+    else {
+        assert(u <= 0x10FFFF); // 用断言检测
+        PUTC(c, 0xF0 | ((u >> 18) & 0xFF));
+        PUTC(c, 0x80 | ((u >> 12) & 0x3F));
+        PUTC(c, 0x80 | ((u >>  6) & 0x3F));
+        PUTC(c, 0x80 | ( u        & 0x3F));
+    }
+}
+```
+
+最终也是写进一个 `char`，为什么要做 `x & 0xFF` 这种操作呢？
+
+这是因为 `u` 是 `unsigned` 类型，一些编译器可能会警告这个转型可能会截断数据。但实际上，配合了范围的检测然后右移之后，可以保证写入的是 0~255 内的值。为了避免一些编译器的警告误判，我们加上 `x & 0xFF`。一般来说，编译器在优化之后，这与操作是会被消去的，不会影响性能。
+
+其实超过 1 个字符输出时，可以只调用 1 次 `lept_context_push()`。这里全用 `PUTC()` 只是为了代码看上去简单一点，我是这样写的：
+
+```c
+#define PUTC_S(c, ch, size)                                         \
+    do {                                                            \
+        int i = 0;                                                  \
+        while (i < size) {                                            \
+            *(char*)lept_context_push(c, sizeof(char)) = (ch[i++]); \
+        }                                                           \
+    } while (0)
+
+static void lept_encode_utf8(lept_context* c, unsigned u) {
+    if (u <= 0x7F) {
+        PUTC(c, u & 0xFF);
+    } else if (u <= 0x07FF) {
+        char* ch = (char*)malloc(2 * sizeof(char));
+        ch[0] = 0xC0 | ((u >> 6) & 0xFF);
+        ch[1] = 0x80 | (u & 0x3F);
+        PUTC_S(c, ch, 2);
+        free(ch);
+        // PUTC(c, 0xC0 | ((u >> 6) & 0xFF));  // 110xxxxx
+        // PUTC(c, 0x80 | (u & 0x3F));         // 10xxxxxx
+    } else if (u <= 0xFFFF) {
+        char* ch = (char*)malloc(3 * sizeof(char));
+        ch[0] = 0xE0 | ((u >> 12) & 0xFF);
+        ch[1] = 0x80 | ((u >> 6) & 0x3F);
+        ch[2] = 0x80 | (u & 0x3F);
+        PUTC_S(c, ch, 3);
+        free(ch);
+        // PUTC(c, 0xE0 | ((u >> 12) & 0xFF));  // 1110xxxx
+        // PUTC(c, 0x80 | ((u >> 6) & 0x3F));   // 10xxxxxx
+        // PUTC(c, 0x80 | (u & 0x3F));          // 10xxxxxx
+    } else {
+        assert(u <= 0x10FFFF);
+        char* ch = (char*)malloc(4 * sizeof(char));
+        ch[0] = 0xF0 | ((u >> 18) & 0xFF);
+        ch[1] = 0x80 | ((u >> 12) & 0x3F);
+        ch[2] = 0x80 | ((u >> 6) & 0x3F);
+        ch[3] = 0x80 | (u & 0x3F);
+        PUTC_S(c, ch, 4);
+        free(ch);
+        // PUTC(c, 0xF0 | ((u >> 18) & 0xFF));  // 11110xxx
+        // PUTC(c, 0x80 | ((u >> 12) & 0x3F));  // 10xxxxxx
+        // PUTC(c, 0x80 | ((u >> 6) & 0x3F));   // 10xxxxxx
+        // PUTC(c, 0x80 | (u & 0x3F));          // 10xxxxxx
+    }
+}
+```
+
+> 代理对没看懂
+
+## 第五节
+
+### 相互引用与前向声明
+
+#### 类型的前向声明
+
+在C/C++中出现不完全类，只能使用该不完全类的指针，且必须对其进行前向声明，而不能像Java哪样直接使用其对象。
+
+```c
+typedef struct lept_value lept_value;  // 由于 lept_value 内使用了自身类型的指针，我们必须前向声明（forward declare）此类型
+
+struct lept_value { /* value */
+    union {
+        struct { lept_value* e; size_t size; }a;    /* array:  elements, element count */
+        struct { char* s; size_t len; }s;           /* string: null-terminated string, string length */
+        double n;                                   /* number */
+    }u;
+    lept_type type;
+};
+```
+
+#### 函数的前向声明
+
+互相引用的函数，必须要在2者之前加入函数的前向声明
+
+```c
+static int lept_parse_value(lept_context* c, lept_value* v);  // lept_parse_value() 会调用 lept_parse_array()，而 lept_parse_array() 又会调用 lept_parse_value()，这是互相引用，必须要加入函数前向声明
+```
+
+### 迭代器失效
+
+```c
+    for (;;) {
+        /* bug! */
+        lept_value* e = lept_context_push(c, sizeof(lept_value));
+        lept_init(e);
+        size++;
+        if ((ret = lept_parse_value(c, e)) != LEPT_PARSE_OK)
+            return ret;
+        /* ... */
+    }
+```
+
+我们把这个指针调用 `lept_parse_value(c, e)`，这里会出现问题，因为 `lept_parse_value()` 及之下的函数都需要调用 `lept_context_push()`，而 `lept_context_push()` 在发现栈满了的时候会用 `realloc()` 扩容。这时候，我们上层的 `e` 就会失效，变成一个悬挂指针（dangling pointer），而且 `lept_parse_value(c, e)` 会通过这个指针写入解析结果，造成非法访问。
+
+在使用 C++ 容器时，也会遇到类似的问题。从容器中取得的迭代器（iterator）后，如果改动容器内容，之前的迭代器会失效。这里的悬挂指针问题也是相同的。
+
+## 第六节
+
+在软件开发过程中，许多时候，选择合适的数据结构后已等于完成一半工作。没有完美的数据结构，所以最好考虑多一些应用的场合，看看时间／空间复杂度以至相关系数是否合适。
+
+要表示键值对的集合，有很多数据结构可供选择，例如：
+
+- 动态数组（dynamic array）：可扩展容量的数组，如 C++ 的 [`std::vector`](https://en.cppreference.com/w/cpp/container/vector)。
+- 有序动态数组（sorted dynamic array）：和动态数组相同，但保证元素已排序，可用二分搜寻查询成员。
+- 平衡树（balanced tree）：平衡二叉树可有序地遍历成员，如红黑树和 C++ 的 [`std::map`](https://en.cppreference.com/w/cpp/container/map)（[`std::multi_map`](https://en.cppreference.com/w/cpp/container/multimap) 支持重复键）。
+- 哈希表（hash table）：通过哈希函数能实现平均 O(1) 查询，如 C++11 的 [`std::unordered_map`](https://en.cppreference.com/w/cpp/container/unordered_map)（[`unordered_multimap`](https://en.cppreference.com/w/cpp/container/unordered_multimap) 支持重复键）。
+
+设一个对象有 n 个成员，数据结构的容量是 m，n ⩽ m，那么一些常用操作的时间／空间复杂度如下：
+
+|                 | 动态数组  | 有序动态数组 | 平衡树     | 哈希表                 |
+| --------------- | --------- | ------------ | ---------- | ---------------------- |
+| 有序            | 否        | 是           | 是         | 否                     |
+| 自定成员次序    | 可        | 否           | 否         | 否                     |
+| 初始化 n 个成员 | O(n)      | O(n log n)   | O(n log n) | 平均 O(n)、最坏 O(n^2) |
+| 加入成员        | 分摊 O(1) | O(n)         | O(log n)   | 平均 O(1)、最坏 O(n)   |
+| 移除成员        | O(n)      | O(n)         | O(log n)   | 平均 O(1)、最坏 O(n)   |
+| 查询成员        | O(n)      | O(log n)     | O(log n)   | 平均 O(1)、最坏 O(n)   |
+| 遍历成员        | O(n)      | O(n)         | O(n)       | O(m)                   |
+| 检测对象相等    | O(n^2)    | O(n)         | O(n)       | 平均 O(n)、最坏 O(n^2) |
+| 空间            | O(m)      | O(m)         | O(n)       | O(m)                   |
+
