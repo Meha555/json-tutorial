@@ -617,3 +617,17 @@ static int lept_parse_string(lept_context* c, lept_value* v) {
 
 ## 第八节
 
+### 解决资源所有权的问题
+
+涉及指针的赋值，就可能引起资源拥有权（resource ownership）的问题。当指向对象 `o` 的指针 `p` 被写入另一处时，程序中便有2处指向同一对象 `o` 的指针，释放这两个指针所指向的内存单元时将会导致后被释放的指针重复释放那块内存单元。
+
+#### 深拷贝
+
+直接将指针 `p` 所指向的内存单元的内容完全拷贝一份，放在新开辟的一块内存中，然后把这块新内存的指针写入目的位置。
+
+为了减少深度复制的成本，有些程序库或运行时还会采用[写入时复制](https://zh.wikipedia.org/zh-cn/寫入時複製)（copy-on-write, COW）。而浅复制（shallow copy）则需要 [引用计数](https://zh.wikipedia.org/wiki/引用计数)（reference count）或 [垃圾回收](https://zh.wikipedia.org/zh-cn/垃圾回收_(計算機科學))（garbage collection, GC）等技术。
+
+#### 移动语义
+
+将指针 `p` 的所有权转移至目的位置后，将原来的指针 `p` 置空。
+
