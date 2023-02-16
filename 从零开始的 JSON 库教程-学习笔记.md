@@ -390,6 +390,16 @@ $ valgrind --leak-check=full  ./leptjson_test
 
 它发现了在 `test_access_boolean()` 中，由 `lept_set_string()` 分配的 2 个字节（`"a"`）泄漏了。
 
+> ```shell
+> ==22078==    at 0x100012EBB: malloc (in /usr/local/Cellar/valgrind/3.11.0/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+> ==22078==    by 0x100008F36: lept_set_string (leptjson.c:208)
+> ==22078==    by 0x100008415: test_access_boolean (test.c:187)
+> ==22078==    by 0x100001849: test_parse (test.c:229)
+> ==22078==    by 0x1000017A3: main (test.c:235)
+> ```
+>
+> 这是函数调用栈，可以看出调用顺序： `main -> test_parse -> test_access_boolean -> lept_set_string -> malloc` ，因此我们在 `lept_set_string` 中的 `malloc` 中查找错误，是由这个 `malloc` 所分配的内存在某处没有释放，导致内存泄漏
+
 Valgrind 还有很多功能，例如可以发现未初始化变量。我们若在应用程序或测试程序中，忘了调用 `lept_init(&v)`，那么 `v.type` 的值没被初始化，其值是不确定的（indeterministic），一些函数如果读取那个值就会出现问题：
 
 ```c
@@ -550,6 +560,8 @@ static int lept_parse_value(lept_context* c, lept_value* v);  // lept_parse_valu
 
 ## 第六节
 
+### 选择合适的数据结构
+
 在软件开发过程中，许多时候，选择合适的数据结构后已等于完成一半工作。没有完美的数据结构，所以最好考虑多一些应用的场合，看看时间／空间复杂度以至相关系数是否合适。
 
 要表示键值对的集合，有很多数据结构可供选择，例如：
@@ -572,4 +584,36 @@ static int lept_parse_value(lept_context* c, lept_value* v);  // lept_parse_valu
 | 遍历成员        | O(n)      | O(n)         | O(n)       | O(m)                   |
 | 检测对象相等    | O(n^2)    | O(n)         | O(n)       | 平均 O(n)、最坏 O(n^2) |
 | 空间            | O(m)      | O(m)         | O(n)       | O(m)                   |
+
+### 重构——提取方法[^1]
+
+将完成一个模块的内部的功能拆分成单独的函数，这样能获得更大的灵活性。【效果类似于C++Primer中提到的 `new/delete` 运算符是将内存的分配/释放和对象的生成/销毁这两个操作绑定在一起，而 `allocator` 类则是将 `new/delete` 的每一个原子操作拆分开】
+
+```c
+// 解析JSON字符串，并将识别出的字符串写入str，其长度写入len
+static int lept_parse_string_raw(lept_context* c, char** str, size_t* len)；
+
+// 将解析出的字符串存入所给的JSON结点(分配内存)
+void lept_set_string(lept_value* v, const char* s, size_t len)；
+
+// 识别JSON字符串的对外API
+static int lept_parse_string(lept_context* c, lept_value* v) {
+    int ret;
+    char* s;
+    size_t len;
+    if ((ret = lept_parse_string_raw(c, &s, &len)) == LEPT_PARSE_OK) // 使用API
+        lept_set_string(v, s, len); // 使用API
+    return ret;
+}
+```
+
+[^1]: Fowler, Martin. Refactoring: improving the design of existing code. Pearson Education India, 2009. 中译本：熊节译，《重构——改善既有代码的设计》，人民邮电出版社，2010年。
+
+## 第七节
+
+### 往返（roundtrip）测试
+
+最简单的测试方式，把一个 JSON 解析，然后再生成另一 JSON，逐字符比较两个 JSON 是否一模一样。
+
+## 第八节
 
